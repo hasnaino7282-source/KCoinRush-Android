@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "442359902557",
+    "project_id": "kcoinrush",
+    "storage_bucket": "kcoinrush.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:442359902557:android:8b8dcb6fcc780b028af8b4",
+        "android_client_info": {
+          "package_name": "com.kcoinrush.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0KV1A0m7b6uxF9p5FQ4ZEd4V0Wtn0D6k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
