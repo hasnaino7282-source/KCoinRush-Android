@@ -20,19 +20,33 @@ jobs:
       - name: Extract Android project
         run: |
           ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
-          if [ -z "$ZIP_FILE" ]; then
-            echo "No ZIP file found"
-            exit 1
-          fi
           mkdir extracted
           unzip -o "$ZIP_FILE" -d extracted
           SETTINGS=$(find extracted -type f -name settings.gradle.kts -print -quit)
-          if [ -z "$SETTINGS" ]; then
-            echo "Gradle settings file not found in ZIP"
-            exit 1
-          fi
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Fix Java and Kotlin versions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          p = Path(os.environ["PROJECT_DIR"]) / "app/build.gradle.kts"
+          s = p.read_text()
+          addition = """
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          """
+          s = s.replace("android {", "android {" + addition, 1)
+          p.write_text(s)
+          print("Java and Kotlin targets set to 17")
+          PY
 
       - name: Build APK
         run: cd "$PROJECT_DIR" && gradle assembleDebug
