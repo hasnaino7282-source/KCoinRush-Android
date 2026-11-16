@@ -83,9 +83,12 @@ jobs:
           mkdir -p "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app"
           cp FirebaseAuth.kt "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/FirebaseAuth.kt"
 
-      - name: Replace MainActivity
+      -      - name: Replace MainActivity
         run: |
-          cp MainActivity.kt "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/MainActivity.kt"
+          SOURCE_FILE=$(find . -type f -name MainActivity.kt -not -path './extracted/*' | head -n 1)
+          echo "Found source: $SOURCE_FILE"
+          test -n "$SOURCE_FILE"
+          cp "$SOURCE_FILE" "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/MainActivity.kt"
 
       - name: Build APK
         run: cd "$PROJECT_DIR" && gradle assembleDebug
