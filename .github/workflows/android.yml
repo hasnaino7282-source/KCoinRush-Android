@@ -69,7 +69,10 @@ jobs:
           p.write_text(s)
           print("Firebase configured")
           PY
-
+      - name: Add Firebase login file
+        run: |
+          mkdir -p "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app"
+          cp FirebaseAuth.kt "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/FirebaseAuth.kt"
       - name: Build APK
         run: cd "$PROJECT_DIR" && gradle assembleDebug
 
