@@ -37,18 +37,20 @@ jobs:
           PROJECT_DIR=$(dirname "$SETTINGS")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Configure Firebase
+      - name: Configure Firebase and Java 17
         run: |
           cp google-services.json "$PROJECT_DIR/app/google-services.json"
 
           python3 - <<'PY'
           from pathlib import Path
           import os
+          import re
 
           root = Path(os.environ["PROJECT_DIR"])
 
           p = root / "build.gradle.kts"
           s = p.read_text()
+
           if "com.google.gms.google-services" not in s:
               s = s.replace(
                   'id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false',
@@ -58,6 +60,7 @@ jobs:
 
           p = root / "app/build.gradle.kts"
           s = p.read_text()
+
           if 'id("com.google.gms.google-services")' not in s:
               s = s.replace(
                   'id("org.jetbrains.kotlin.plugin.compose")',
@@ -70,8 +73,35 @@ jobs:
                   'dependencies {\n    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))\n    implementation("com.google.firebase:firebase-auth")\n    implementation("com.google.firebase:firebase-firestore")',
                   1
               )
+
+          if "compileOptions {" not in s:
+              s = s.replace(
+                  "android {",
+                  'android {\n    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }',
+                  1
+              )
+          else:
+              s = re.sub(
+                  r'(sourceCompatibility|targetCompatibility)\s*=\s*JavaVersion\.VERSION_1_8',
+                  r'\1 = JavaVersion.VERSION_17',
+                  s
+              )
+
+          if "kotlinOptions {" not in s:
+              s = s.replace(
+                  "android {",
+                  'android {\n    kotlinOptions {\n        jvmTarget = "17"\n    }',
+                  1
+              )
+          else:
+              s = re.sub(
+                  r'jvmTarget\s*=\s*"1\.8"',
+                  'jvmTarget = "17"',
+                  s
+              )
+
           p.write_text(s)
-          print("Firebase configured")
+          print("Firebase and Java 17 configured")
           PY
 
       - name: Add Firebase login file
