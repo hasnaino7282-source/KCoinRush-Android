@@ -1,0 +1,82 @@
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { initializeApp } = require("firebase-admin/app");
+const {
+  getFirestore,
+  FieldValue
+} = require("firebase-admin/firestore");
+
+initializeApp();
+
+const db = getFirestore();
+
+exports.claimReferral = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Please sign in first.");
+  }
+
+  const newUserId = request.auth.uid;
+  const referralCode = String(request.data?.referralCode || "")
+    .trim()
+    .toUpperCase();
+
+  if (!referralCode) {
+    throw new HttpsError("invalid-argument", "Enter a referral code.");
+  }
+
+  const newUserRef = db.collection("players").doc(newUserId);
+  const claimRef = db.collection("referralClaims").doc(newUserId);
+
+  const matchingPlayers = await db.collection("players")
+    .where("referralCode", "==", referralCode)
+    .limit(2)
+    .get();
+
+  if (matchingPlayers.empty || matchingPlayers.size !== 1) {
+    throw new HttpsError("not-found", "Referral code is invalid.");
+  }
+
+  const inviterId = matchingPlayers.docs[0].id;
+
+  if (inviterId === newUserId) {
+    throw new HttpsError("failed-precondition", "You cannot refer yourself.");
+  }
+
+  const inviterRef = db.collection("players").doc(inviterId);
+
+  await db.runTransaction(async (transaction) => {
+    const claim = await transaction.get(claimRef);
+    const newUser = await transaction.get(newUserRef);
+    const inviter = await transaction.get(inviterRef);
+
+    if (claim.exists) {
+      throw new HttpsError("already-exists", "Referral already claimed.");
+    }
+
+    if (!newUser.exists || !inviter.exists) {
+      throw new HttpsError("failed-precondition", "Player profile not found.");
+    }
+
+    transaction.update(inviterRef, {
+      coins: FieldValue.increment(2000),
+      successfulReferrals: FieldValue.increment(1)
+    });
+
+    transaction.update(newUserRef, {
+      coins: FieldValue.increment(500),
+      referredBy: inviterId
+    });
+
+    transaction.create(claimRef, {
+      inviterId: inviterId,
+      newUserId: newUserId,
+      referralCode: referralCode,
+      createdAt: FieldValue.serverTimestamp()
+    });
+  });
+
+  return {
+    success: true,
+    inviterReward: 2000,
+    welcomeReward: 500
+  };
+});
