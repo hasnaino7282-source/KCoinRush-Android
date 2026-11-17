@@ -332,4 +332,50 @@ private val games = listOf(
     GamePanel("🔢 BRAIN CHALLENGE", message) {
         Text(if (a == 0) "? + ? = ?" else "$a + $b = ?", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = GoldLight, fontSize = 32.sp, fontWeight = FontWeight.Black)
         GoldButton("NEW PUZZLE") { a = Random.nextInt(2, 10); b = Random.nextInt(2, 10); solved = false; message = "Choose the correct answer" }
-   
+        if (a != 0 && !solved) {
+            val answers = listOf(a + b, a + b + 1, a + b - 1, a + b + 3).shuffled()
+            answers.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { value -> Button(onClick = { if (value == a + b) { solved = true; message = "Correct! +60 coins"; onAward(60) } else message = "Not quite. Try again." }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text(value.toString(), color = Color.White) } } } }
+        }
+    }
+}
+
+@Composable private fun RunnerGame(onAward: (Int) -> Unit) {
+    var goldLane by remember { mutableIntStateOf(-1) }; var message by remember { mutableStateOf("Start the run and find the gold lane") }; var finished by remember { mutableStateOf(false) }
+    GamePanel("🏃 GOLD RUNNER", message) {
+        Text("⬅️                         ➡️", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 28.sp)
+        GoldButton("START RUN") { goldLane = Random.nextInt(2); finished = false; message = "Choose left or right" }
+        if (goldLane >= 0 && !finished) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = { finished = true; if (goldLane == 0) { message = "Gold found! +80 coins"; onAward(80) } else message = "No gold this time. Try again." }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text("LEFT") }
+            Button(onClick = { finished = true; if (goldLane == 1) { message = "Gold found! +80 coins"; onAward(80) } else message = "No gold this time. Try again." }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text("RIGHT") }
+        }
+    }
+}
+
+
+@Composable
+private fun ConnectionRequiredScreen() {
+    MaterialTheme(colorScheme = darkColorScheme(background = Ink, surface = Panel, primary = Gold)) {
+        Box(Modifier.fillMaxSize().background(Ink).padding(24.dp), contentAlignment = Alignment.Center) {
+            CardBlock {
+                Text("🌐", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 48.sp)
+                Text("INTERNET REQUIRED", modifier = Modifier.fillMaxWidth(), color = Gold, textAlign = TextAlign.Center, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                Text("Please connect to the internet to log in and play KCoinRush.", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DailyLimitScreen(limit: Int, used: Int, onHome: () -> Unit) {
+    MaterialTheme(colorScheme = darkColorScheme(background = Ink, surface = Panel, primary = Gold)) {
+        Box(Modifier.fillMaxSize().background(Ink).padding(24.dp), contentAlignment = Alignment.Center) {
+            CardBlock {
+                Text("⏰", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 48.sp)
+                Text("DAILY TAP LIMIT REACHED", modifier = Modifier.fillMaxWidth(), color = Gold, textAlign = TextAlign.Center, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("You used $used of $limit game taps today. Come back tomorrow!", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center)
+                Spacer(Modifier.height(12.dp))
+                GoldButton("BACK TO HOME", onHome)
+            }
+        }
+    }
+}
