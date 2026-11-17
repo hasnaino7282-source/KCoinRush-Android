@@ -1,3 +1,4 @@
+
 name: Build KCoinRush Android
 
 "on":
@@ -27,7 +28,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          ZIP_FILE=$(find . -type f -iname '*.zip' -print -quit)
+          ZIP_FILE=$(find . -maxdepth 1 -type f -iname '*.zip' -print -quit)
           test -n "$ZIP_FILE"
           mkdir -p extracted
           unzip -o "$ZIP_FILE" -d extracted
@@ -69,14 +70,6 @@ jobs:
                   'dependencies {\n    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))\n    implementation("com.google.firebase:firebase-auth")\n    implementation("com.google.firebase:firebase-firestore")',
                   1
               )
-
-          if "compileOptions" not in s:
-              s = s.replace(
-                  "android {",
-                  'android {\n    compileOptions {\n        sourceCompatibility = JavaVersion.VERSION_17\n        targetCompatibility = JavaVersion.VERSION_17\n    }\n    kotlinOptions {\n        jvmTarget = "17"\n    }',
-                  1
-              )
-
           p.write_text(s)
           print("Firebase configured")
           PY
@@ -85,6 +78,12 @@ jobs:
         run: |
           mkdir -p "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app"
           cp FirebaseAuth.kt "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/FirebaseAuth.kt"
+
+      - name: Replace MainActivity
+        run: |
+          SOURCE_FILE=$(find . -maxdepth 1 -type f -name MainActivity.kt -print -quit)
+          test -n "$SOURCE_FILE"
+          cp "$SOURCE_FILE" "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/MainActivity.kt"
 
       - name: Build APK
         run: |
@@ -96,3 +95,4 @@ jobs:
         with:
           name: KCoinRush-APK
           path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
+          
