@@ -379,3 +379,45 @@ private fun DailyLimitScreen(limit: Int, used: Int, onHome: () -> Unit) {
         }
     }
 }
+     }
+    }
+}
+
+
+@Composable
+private fun ReferralScreen() {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "GUEST"
+    val referralCode = "KC" + uid.takeLast(8).uppercase(Locale.US)
+    val inviteText = "Join KCoinRush! Use my referral code: $referralCode. New players may receive 500 bonus KCoins when referral rewards are activated."
+
+    Column(
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CardBlock {
+            Text("👥", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 44.sp)
+            Text("KCOINRUSH REFERRALS", modifier = Modifier.fillMaxWidth(), color = Gold, textAlign = TextAlign.Center, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Spacer(Modifier.height(18.dp))
+            Text("YOUR REFERRAL CODE", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center, fontSize = 12.sp)
+            Text(referralCode, modifier = Modifier.fillMaxWidth(), color = GoldLight, textAlign = TextAlign.Center, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.height(12.dp))
+            GoldButton("COPY REFERRAL CODE") { clipboard.setText(AnnotatedString(referralCode)) }
+            Spacer(Modifier.height(8.dp))
+            GoldButton("SHARE INVITATION") {
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, inviteText)
+                }
+                context.startActivity(Intent.createChooser(sendIntent, "Share KCoinRush"))
+            }
+            Spacer(Modifier.height(18.dp))
+            Text("Inviter reward: 2,000 KCoins", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
+            Text("New player bonus: 500 KCoins", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
+            Text("Successful referrals: 0", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
+            Spacer(Modifier.height(14.dp))
+            Text("Referral screen preview only. Rewards and referral counts are not active until secure server verification is connected.", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center, fontSize = 11.sp)
+        }
+    }
+}
