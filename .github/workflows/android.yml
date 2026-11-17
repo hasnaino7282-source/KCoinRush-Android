@@ -1,4 +1,3 @@
-
 name: Build KCoinRush Android
 
 "on":
@@ -20,6 +19,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
 
       - name: Extract Android project
         run: |
@@ -82,12 +86,6 @@ jobs:
           mkdir -p "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app"
           cp FirebaseAuth.kt "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/FirebaseAuth.kt"
 
-      - name: Replace MainActivity
-        run: |
-          SOURCE_FILE=$(find . -type f -name MainActivity.kt -not -path './extracted/*' -print -quit)
-          test -n "$SOURCE_FILE"
-          cp "$SOURCE_FILE" "$PROJECT_DIR/app/src/main/java/com/kcoinrush/app/MainActivity.kt"
-
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
@@ -98,4 +96,3 @@ jobs:
         with:
           name: KCoinRush-APK
           path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
-          
