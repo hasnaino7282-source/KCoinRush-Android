@@ -2,6 +2,7 @@ package com.kcoinrush.app
 
 import android.os.Bundle
 import android.content.Context
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -30,6 +31,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -158,7 +162,7 @@ private fun KCoinRushApp(
                     when (screen) {
                         "Home" -> HomeScreen(coins, level, xp, missionCount, onOpenGame)
                         "Games" -> GamesScreen(onOpenGame)
-                        "Friends" -> InfoScreen("👥", "PLAY TOGETHER", "Friends, verified referrals and rewards will be connected after secure accounts are added.")
+                        "Friends" -> ReferralScreen()
                         "Profile" -> InfoScreen("👑", "CHAMPION PROFILE", "Level $level  •  ${coins} coins\n\nThis prototype saves progress on this device only.")
                         "Play" -> GameScreen(game, onBack, onAward)
                     }
@@ -331,8 +335,8 @@ private val games = listOf(
     var a by remember { mutableIntStateOf(0) }; var b by remember { mutableIntStateOf(0) }; var solved by remember { mutableStateOf(false) }; var message by remember { mutableStateOf("Press new puzzle to begin") }
     GamePanel("🔢 BRAIN CHALLENGE", message) {
         Text(if (a == 0) "? + ? = ?" else "$a + $b = ?", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = GoldLight, fontSize = 32.sp, fontWeight = FontWeight.Black)
-        GoldButton("NEW PUZZLE") { a = Random.nextInt(2, 10); b = Random.nextInt(2, 10); solved = false; message = "Choose the correct answer" }
-        if (a != 0 && !solved) {
+        GoldButton("NEW PUZZLE") { a = Random.nextInt(2, 10); b = Random.nextInt(2, 10); b = Random.nextInt(2, 10); solved = false; message = "Choose the correct answer" }
+                if (a != 0 && !solved) {
             val answers = listOf(a + b, a + b + 1, a + b - 1, a + b + 3).shuffled()
             answers.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { value -> Button(onClick = { if (value == a + b) { solved = true; message = "Correct! +60 coins"; onAward(60) } else message = "Not quite. Try again." }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text(value.toString(), color = Color.White) } } } }
         }
@@ -377,9 +381,6 @@ private fun DailyLimitScreen(limit: Int, used: Int, onHome: () -> Unit) {
                 GoldButton("BACK TO HOME", onHome)
             }
         }
-    }
-}
-     }
     }
 }
 
