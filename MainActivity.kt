@@ -117,6 +117,21 @@ class MainActivity : ComponentActivity() {
             var xp by remember { mutableIntStateOf(prefs.getInt("xp", 0)) }
             var level by remember { mutableIntStateOf(prefs.getInt("level", 1)) }
             var screen by remember { mutableStateOf("Home") }
+            var rewardedAdReady by remember { mutableStateOf(false) }
+            var rewardMessage by remember { mutableStateOf("Loading rewarded ad...") }
+            LaunchedEffect(Unit) {
+                RewardedAds.load(
+                    this@MainActivity,
+                    onLoaded = {
+                        rewardedAdReady = true
+                        rewardMessage = "Ready! Watch a complete ad to earn 500 KCoins."
+                    },
+                    onFailed = {
+                        rewardedAdReady = false
+                        rewardMessage = "Ad is loading. Please try again shortly."
+                    }
+                )
+            }
             LaunchedEffect(screen) {
                 if (screen == "Home") {
                     val lastShown = prefs.getLong("last_interstitial_shown", 0L)
@@ -150,6 +165,50 @@ class MainActivity : ComponentActivity() {
                 if (missionCount == 3) { coins += 150; missionCount = 0 }
                 prefs.edit().putInt("coins", coins).putInt("xp", xp).putInt("level", level).putInt("mission", missionCount).apply()
             }
+            fun watchRewardedAd() {
+                if (!rewardedAdReady) {
+                    rewardMessage = "Ad is loading. Please try again shortly."
+                    RewardedAds.load(
+                        this@MainActivity,
+                        onLoaded = {
+                            rewardedAdReady = true
+                            rewardMessage = "Ready! Watch a complete ad to earn 500 KCoins."
+                        },
+                        onFailed = { rewardedAdReady = false }
+                    )
+                    return
+                }
+                rewardedAdReady = false
+                rewardMessage = "Enjoy the ad!"
+                RewardedAds.show(
+                    this@MainActivity,
+                    onRewardEarned = { _, _ ->
+                        award(500)
+                        rewardMessage = "Success! 500 KCoins added."
+                    },
+                    onAdClosed = {
+                        RewardedAds.load(
+                            this@MainActivity,
+                            onLoaded = {
+                                rewardedAdReady = true
+                                rewardMessage = "Ready! Watch a complete ad to earn 500 KCoins."
+                            },
+                            onFailed = { rewardedAdReady = false }
+                        )
+                    },
+                    onUnavailable = {
+                        rewardMessage = "Ad not ready. Loading another ad..."
+                        RewardedAds.load(
+                            this@MainActivity,
+                            onLoaded = {
+                                rewardedAdReady = true
+                                rewardMessage = "Ready! Watch a complete ad to earn 500 KCoins."
+                            },
+                            onFailed = { rewardedAdReady = false }
+                        )
+                    }
+                )
+            }
             when {
                 !hasInternet -> ConnectionRequiredScreen()
                 !loggedIn -> FirebaseAuthScreen(onLoginSuccess = { loggedIn = true })
@@ -159,7 +218,9 @@ class MainActivity : ComponentActivity() {
                     screen = screen, game = game,
                     onNavigate = { screen = it }, onOpenGame = { game = it; screen = "Play" },
                     onBack = { screen = "Home" }, onAward = { award(it) },
-                    dailyTaps = dailyTaps, dailyTapLimit = dailyTapLimit
+                    dailyTaps = dailyTaps, dailyTapLimit = dailyTapLimit,
+                    rewardedAdReady = rewardedAdReady, rewardMessage = rewardMessage,
+                    onWatchAd = { watchRewardedAd() }
                 )
             }
         }
@@ -170,7 +231,8 @@ class MainActivity : ComponentActivity() {
 private fun KCoinRushApp(
     coins: Int, level: Int, xp: Int, missionCount: Int, screen: String, game: String,
     onNavigate: (String) -> Unit, onOpenGame: (String) -> Unit, onBack: () -> Unit, onAward: (Int) -> Unit,
-    dailyTaps: Int, dailyTapLimit: Int
+    dailyTaps: Int, dailyTapLimit: Int,
+    rewardedAdReady: Boolean, rewardMessage: String, onWatchAd: () -> Unit
 ) {
     MaterialTheme(colorScheme = darkColorScheme(background = Ink, surface = Panel, primary = Gold, onPrimary = Ink)) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF291642), Ink, Ink)))) {
@@ -179,7 +241,7 @@ private fun KCoinRushApp(
                 Text("DAILY GAME TAPS: $dailyTaps / $dailyTapLimit", color = GoldLight, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.End)
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     when (screen) {
-                        "Home" -> HomeScreen(coins, level, xp, missionCount, onOpenGame)
+                        "Home" -> HomeScreen(coins, level, xp, missionCount, onOpenGame, rewardedAdReady, rewardMessage, onWatchAd)
                         "Games" -> GamesScreen(onOpenGame)
                         "Friends" -> InfoScreen("👥", "PLAY TOGETHER", "Friends, verified referrals and rewards will be connected after secure accounts are added.")
                         "Profile" -> InfoScreen("👑", "CHAMPION PROFILE", "Level $level  •  ${coins} coins\n\nThis prototype saves progress on this device only.")
@@ -210,7 +272,10 @@ private val games = listOf(
     GameInfo("GOLD RUNNER", "🏃", "Choose the lane hiding the gold", "runner")
 )
 
-@Composable private fun HomeScreen(coins: Int, level: Int, xp: Int, mission: Int, onOpenGame: (String) -> Unit) {
+@Composable private fun HomeScreen(
+    coins: Int, level: Int, xp: Int, mission: Int, onOpenGame: (String) -> Unit,
+    rewardedAdReady: Boolean, rewardMessage: String, onWatchAd: () -> Unit
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 12.dp)) {
         Surface(shape = RoundedCornerShape(24.dp), color = Color.Transparent, border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF63457F))) {
             Box(Modifier.background(Brush.linearGradient(listOf(Color(0xFF382052), Color(0xFF171020)))).padding(18.dp)) {
@@ -224,6 +289,24 @@ private val games = listOf(
                 }
                 Text("🏆", modifier = Modifier.align(Alignment.CenterEnd), fontSize = 64.sp)
             }
+        }
+        Spacer(Modifier.height(12.dp))
+        CardBlock {
+            Text("🎁  WATCH ADS & EARN", color = Gold, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            Spacer(Modifier.height(5.dp))
+            Text("Complete one rewarded ad and receive 500 KCoins.", color = Color.White, fontSize = 12.sp)
+            Spacer(Modifier.height(9.dp))
+            Button(
+                onClick = onWatchAd,
+                enabled = rewardedAdReady,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Ink, disabledContainerColor = Panel2, disabledContentColor = Muted),
+                shape = RoundedCornerShape(13.dp)
+            ) {
+                Text(if (rewardedAdReady) "WATCH ADS & EARN 500 KCOINS" else "LOADING REWARDED AD...", fontWeight = FontWeight.Black)
+            }
+            Spacer(Modifier.height(5.dp))
+            Text(rewardMessage, color = Muted, fontSize = 10.sp)
         }
         SectionTitle("CHOOSE YOUR GAME", "4 ARCADE GAMES")
         LazyVerticalGrid(columns = GridCells.Fixed(2), modifier = Modifier.height(270.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), userScrollEnabled = false) {
