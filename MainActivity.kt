@@ -2,12 +2,17 @@ package com.kcoinrush.app
 
 import android.os.Bundle
 import android.content.Context
-import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.view.MotionEvent
 import com.google.firebase.auth.FirebaseAuth
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,9 +36,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -102,6 +104,8 @@ class MainActivity : ComponentActivity() {
             prefs.edit().putString("tap_date", tapDate).putInt("daily_taps", 0).apply()
         }
         refreshInternet()
+        prefs.edit().putLong("last_interstitial_shown", System.currentTimeMillis()).apply()
+        InterstitialAds.load(this)
         connectivityManager.registerNetworkCallback(
             android.net.NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -113,6 +117,21 @@ class MainActivity : ComponentActivity() {
             var xp by remember { mutableIntStateOf(prefs.getInt("xp", 0)) }
             var level by remember { mutableIntStateOf(prefs.getInt("level", 1)) }
             var screen by remember { mutableStateOf("Home") }
+            LaunchedEffect(screen) {
+                if (screen == "Home") {
+                    val lastShown = prefs.getLong("last_interstitial_shown", 0L)
+                    val now = System.currentTimeMillis()
+                    if (now - lastShown >= 120_000L) {
+                        InterstitialAds.show(
+                            this@MainActivity,
+                            onShown = {
+                                prefs.edit().putLong("last_interstitial_shown", System.currentTimeMillis()).apply()
+                            },
+                            onUnavailable = { InterstitialAds.load(this@MainActivity) }
+                        )
+                    }
+                }
+            }
             var game by remember { mutableStateOf("") }
             var missionCount by remember { mutableIntStateOf(prefs.getInt("mission", 0)) }
             var loggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
@@ -162,7 +181,7 @@ private fun KCoinRushApp(
                     when (screen) {
                         "Home" -> HomeScreen(coins, level, xp, missionCount, onOpenGame)
                         "Games" -> GamesScreen(onOpenGame)
-                        "Friends" -> ReferralScreen()
+                        "Friends" -> InfoScreen("👥", "PLAY TOGETHER", "Friends, verified referrals and rewards will be connected after secure accounts are added.")
                         "Profile" -> InfoScreen("👑", "CHAMPION PROFILE", "Level $level  •  ${coins} coins\n\nThis prototype saves progress on this device only.")
                         "Play" -> GameScreen(game, onBack, onAward)
                     }
@@ -335,8 +354,8 @@ private val games = listOf(
     var a by remember { mutableIntStateOf(0) }; var b by remember { mutableIntStateOf(0) }; var solved by remember { mutableStateOf(false) }; var message by remember { mutableStateOf("Press new puzzle to begin") }
     GamePanel("🔢 BRAIN CHALLENGE", message) {
         Text(if (a == 0) "? + ? = ?" else "$a + $b = ?", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, color = GoldLight, fontSize = 32.sp, fontWeight = FontWeight.Black)
-        GoldButton("NEW PUZZLE") { a = Random.nextInt(2, 10); b = Random.nextInt(2, 10); b = Random.nextInt(2, 10); solved = false; message = "Choose the correct answer" }
-                if (a != 0 && !solved) {
+        GoldButton("NEW PUZZLE") { a = Random.nextInt(2, 10); b = Random.nextInt(2, 10); solved = false; message = "Choose the correct answer" }
+        if (a != 0 && !solved) {
             val answers = listOf(a + b, a + b + 1, a + b - 1, a + b + 3).shuffled()
             answers.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { value -> Button(onClick = { if (value == a + b) { solved = true; message = "Correct! +60 coins"; onAward(60) } else message = "Not quite. Try again." }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Panel2)) { Text(value.toString(), color = Color.White) } } } }
         }
@@ -380,45 +399,6 @@ private fun DailyLimitScreen(limit: Int, used: Int, onHome: () -> Unit) {
                 Spacer(Modifier.height(12.dp))
                 GoldButton("BACK TO HOME", onHome)
             }
-        }
-    }
-}
-
-
-@Composable
-private fun ReferralScreen() {
-    val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
-    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "GUEST"
-    val referralCode = "KC" + uid.takeLast(8).uppercase(Locale.US)
-    val inviteText = "Join KCoinRush! Use my referral code: $referralCode. New players may receive 500 bonus KCoins when referral rewards are activated."
-
-    Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        CardBlock {
-            Text("👥", modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center, fontSize = 44.sp)
-            Text("KCOINRUSH REFERRALS", modifier = Modifier.fillMaxWidth(), color = Gold, textAlign = TextAlign.Center, fontWeight = FontWeight.Black, fontSize = 20.sp)
-            Spacer(Modifier.height(18.dp))
-            Text("YOUR REFERRAL CODE", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center, fontSize = 12.sp)
-            Text(referralCode, modifier = Modifier.fillMaxWidth(), color = GoldLight, textAlign = TextAlign.Center, fontSize = 28.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(12.dp))
-            GoldButton("COPY REFERRAL CODE") { clipboard.setText(AnnotatedString(referralCode)) }
-            Spacer(Modifier.height(8.dp))
-            GoldButton("SHARE INVITATION") {
-                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, inviteText)
-                }
-                context.startActivity(Intent.createChooser(sendIntent, "Share KCoinRush"))
-            }
-            Spacer(Modifier.height(18.dp))
-            Text("Inviter reward: 2,000 KCoins", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
-            Text("New player bonus: 500 KCoins", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
-            Text("Successful referrals: 0", modifier = Modifier.fillMaxWidth(), color = Color.White, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(14.dp))
-            Text("Referral screen preview only. Rewards and referral counts are not active until secure server verification is connected.", modifier = Modifier.fillMaxWidth(), color = Muted, textAlign = TextAlign.Center, fontSize = 11.sp)
         }
     }
 }
