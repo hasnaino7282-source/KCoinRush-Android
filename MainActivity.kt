@@ -2,6 +2,9 @@ package com.kcoinrush.app
 
 import android.os.Bundle
 import android.content.Context
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -150,6 +153,21 @@ class MainActivity : ComponentActivity() {
             var game by remember { mutableStateOf("") }
             var missionCount by remember { mutableIntStateOf(prefs.getInt("mission", 0)) }
             var loggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+            val referralCode = remember {
+                (FirebaseAuth.getInstance().currentUser?.uid ?: "GUESTUSER").take(8).uppercase(Locale.US)
+            }
+            fun copyReferralCode() {
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("KCoinRush referral code", referralCode))
+            }
+            fun shareReferralInvite() {
+                val shareText = "Join me on KCoinRush! Use my referral code: $referralCode"
+                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                startActivity(Intent.createChooser(sendIntent, "Share KCoinRush invite"))
+            }
             DisposableEffect(Unit) {
                 val auth = FirebaseAuth.getInstance()
                 val listener = FirebaseAuth.AuthStateListener { loggedIn = it.currentUser != null }
@@ -220,7 +238,10 @@ class MainActivity : ComponentActivity() {
                     onBack = { screen = "Home" }, onAward = { award(it) },
                     dailyTaps = dailyTaps, dailyTapLimit = dailyTapLimit,
                     rewardedAdReady = rewardedAdReady, rewardMessage = rewardMessage,
-                    onWatchAd = { watchRewardedAd() }
+                    onWatchAd = { watchRewardedAd() },
+                    referralCode = referralCode,
+                    onCopyReferralCode = { copyReferralCode() },
+                    onShareReferral = { shareReferralInvite() }
                 )
             }
         }
@@ -232,7 +253,8 @@ private fun KCoinRushApp(
     coins: Int, level: Int, xp: Int, missionCount: Int, screen: String, game: String,
     onNavigate: (String) -> Unit, onOpenGame: (String) -> Unit, onBack: () -> Unit, onAward: (Int) -> Unit,
     dailyTaps: Int, dailyTapLimit: Int,
-    rewardedAdReady: Boolean, rewardMessage: String, onWatchAd: () -> Unit
+    rewardedAdReady: Boolean, rewardMessage: String, onWatchAd: () -> Unit,
+    referralCode: String, onCopyReferralCode: () -> Unit, onShareReferral: () -> Unit
 ) {
     MaterialTheme(colorScheme = darkColorScheme(background = Ink, surface = Panel, primary = Gold, onPrimary = Ink)) {
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF291642), Ink, Ink)))) {
@@ -243,7 +265,13 @@ private fun KCoinRushApp(
                     when (screen) {
                         "Home" -> HomeScreen(coins, level, xp, missionCount, onOpenGame, rewardedAdReady, rewardMessage, onWatchAd)
                         "Games" -> GamesScreen(onOpenGame)
-                        "Friends" -> InfoScreen("👥", "PLAY TOGETHER", "Friends, verified referrals and rewards will be connected after secure accounts are added.")
+                        "Friends" -> ReferralScreen(
+                            referralCode = referralCode,
+                            invitedFriends = 0,
+                            onCopyCode = onCopyReferralCode,
+                            onShareInvite = onShareReferral,
+                            onBack = { onNavigate("Home") }
+                        )
                         "Profile" -> InfoScreen("👑", "CHAMPION PROFILE", "Level $level  •  ${coins} coins\n\nThis prototype saves progress on this device only.")
                         "Play" -> GameScreen(game, onBack, onAward)
                     }
