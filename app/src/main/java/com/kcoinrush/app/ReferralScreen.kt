@@ -1,4 +1,3 @@
-
 package com.kcoinrush.app
 
 import android.content.Intent
@@ -37,13 +36,17 @@ fun ReferralScreen(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("KCoinRush Referrals", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            "KCoinRush Referrals",
+            style = MaterialTheme.typography.headlineMedium
+        )
 
         Spacer(Modifier.height(24.dp))
 
         Card {
             Column(Modifier.padding(20.dp)) {
                 Text("Your Referral Code")
+
                 Text(
                     referralCode,
                     style = MaterialTheme.typography.headlineLarge
