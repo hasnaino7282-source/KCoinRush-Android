@@ -1,131 +1,96 @@
 package com.kcoinrush.app
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import android.content.Intent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
 
-private val ReferralBackground = Color(0xFF0B0714)
-private val ReferralPanel = Color(0xFF1B1229)
-private val ReferralGold = Color(0xFFF4C65E)
-private val ReferralMuted = Color(0xFFB9AFC8)
-
-/**
- * Referral UI only. Connect secure referral validation and coin rewards on a trusted
- * backend before granting any rewards. Do not award coins from this screen alone.
- */
 @Composable
 fun ReferralScreen(
-    referralCode: String,
-    invitedFriends: Int,
-    onCopyCode: () -> Unit,
-    onShareInvite: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val uid = FirebaseAuth.getInstance().currentUser?.uid ?: "GUEST"
+    val referralCode = "KC" + uid.takeLast(8).uppercase()
+
+    val inviteText = """
+        Join KCoinRush!
+        Use my referral code: $referralCode
+        New players get 500 bonus KCoins!
+    """.trimIndent()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(ReferralBackground)
-            .padding(18.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
-            Text(
-                text = "← Back",
-                color = ReferralGold,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        }
-        // Back action is presented as a button so it is accessible and clickable.
-        Button(
-            onClick = onBack,
-            colors = ButtonDefaults.buttonColors(containerColor = ReferralPanel),
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("BACK TO HOME", color = ReferralGold) }
-
-        Spacer(Modifier.height(20.dp))
-        Text("👥", fontSize = 48.sp)
         Text(
-            "INVITE FRIENDS",
-            color = ReferralGold,
-            fontSize = 25.sp,
-            fontWeight = FontWeight.Black,
-            textAlign = TextAlign.Center
+            "KCoinRush Referrals",
+            style = MaterialTheme.typography.headlineMedium
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Share KCoinRush with friends and play together!",
-            color = ReferralMuted,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(20.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = ReferralPanel)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("YOUR REFERRAL CODE", color = ReferralMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Text(referralCode, color = ReferralGold, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onCopyCode,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = ReferralGold)
-                ) { Text("COPY REFERRAL CODE", color = ReferralBackground, fontWeight = FontWeight.Black) }
-                Spacer(Modifier.height(8.dp))
-                Button(
-                    onClick = onShareInvite,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7650B5))
-                ) { Text("SHARE INVITE", color = Color.White, fontWeight = FontWeight.Bold) }
-            }
-        }
+        Spacer(Modifier.height(24.dp))
 
-        Spacer(Modifier.height(16.dp))
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = ReferralPanel)
-        ) {
-            Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                Text("🎁 REFERRAL REWARDS", color = ReferralGold, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                Spacer(Modifier.height(10.dp))
-                Text("You invite a friend: 2,000 KCoins", color = Color.White, fontWeight = FontWeight.Bold)
-                Text("New player welcome reward: 500 KCoins", color = Color.White, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(14.dp))
-                Text("INVITE PROGRESS", color = ReferralMuted, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                Spacer(Modifier.height(6.dp))
-                Text("$invitedFriends / 5 friends", color = ReferralGold, fontSize = 20.sp, fontWeight = FontWeight.Black)
+        Card {
+            Column(Modifier.padding(20.dp)) {
+                Text("Your Referral Code")
+
                 Text(
-                    "Rewards are a preview only. Referral verification and coin payments are not active until a secure server is connected.",
-                    color = ReferralMuted,
-                    fontSize = 11.sp
+                    referralCode,
+                    style = MaterialTheme.typography.headlineLarge
                 )
+
+                Spacer(Modifier.height(12.dp))
+
+                Button(onClick = {
+                    clipboard.setText(AnnotatedString(referralCode))
+                }) {
+                    Text("Copy Code")
+                }
+
+                Button(onClick = {
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, inviteText)
+                    }
+                    context.startActivity(
+                        Intent.createChooser(sendIntent, "Share KCoinRush")
+                    )
+                }) {
+                    Text("Share Invitation")
+                }
             }
         }
+
+        Spacer(Modifier.height(20.dp))
+
+        Text("Inviter reward: 2,000 KCoins")
+        Text("New player bonus: 500 KCoins")
+        Text("Successful referrals: 0")
+
+        Spacer(Modifier.height(24.dp))
+
+        OutlinedButton(onClick = onBack) {
+            Text("Back")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            "Referral rewards are not active until server verification is connected.",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
